@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "659851885931",
+    "project_id": "kissan-sanjivani-405b5",
+    "storage_bucket": "kissan-sanjivani-405b5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:659851885931:android:e73a9a388a044b6710202e",
+        "android_client_info": {
+          "package_name": "com.example.ks_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjYJ-lsEAr3GlAJ8Vle-N23bKGLywqQu4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
