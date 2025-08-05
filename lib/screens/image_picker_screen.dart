@@ -97,10 +97,10 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> with TickerProvid
 
     setState(() {
       _isLoading = false;
-      _diseaseName = "Tomato Leaf Mold";
-      _confidenceScore = "92%";
-      _explanation = "The infected area is visible around the leaf edges with characteristic yellowing and brown spots.";
-      _recommendedAction = "Use copper-based fungicides. Ensure good air circulation and avoid overhead watering.";
+      _diseaseName = "Bacterialblight";
+      _confidenceScore = "100.0%";
+      _explanation = "Bacterial blight is a serious disease in rice crops caused by the bacterium Xanthomonas oryzae pv. oryzae. It typically starts with yellowing and wilting of the leaf tips, which gradually spread down the leaf blade, leading to drying and reduced photosynthesis. The disease spreads rapidly under warm, humid conditions, especially through rain splash, irrigation water, and infected seeds. It can severely reduce crop yield if not treated early. ";
+      _recommendedAction = "The recommended action includes using disease-resistant rice varieties, practicing proper field sanitation, and avoiding excessive nitrogen fertilizers. Additionally, seed treatment with approved bactericides and spraying copper-based fungicides or antibiotics like streptomycin can help manage the infection. Proper water management and removing infected plants early can also limit the spread of the disease.";
     });
   }
 
