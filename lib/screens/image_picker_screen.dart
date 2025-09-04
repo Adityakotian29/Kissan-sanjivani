@@ -3,20 +3,27 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../widgets/image_source_dialog.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ImagePickerScreen extends StatefulWidget {
+import '../providers/detection_provider.dart';
+import '../widgets/image_source_dialog.dart';
+import '../widgets/detection_result_card.dart';
+import '../services/tflite_service.dart';
+import '../models/disease_detection.dart';
+
+class ImagePickerScreen extends ConsumerStatefulWidget {
   const ImagePickerScreen({super.key});
 
   @override
-  State<ImagePickerScreen> createState() => _ImagePickerScreenState();
+  ConsumerState<ImagePickerScreen> createState() => _ImagePickerScreenState();
 }
 
-class _ImagePickerScreenState extends State<ImagePickerScreen> with TickerProviderStateMixin {
+class _ImagePickerScreenState extends ConsumerState<ImagePickerScreen> with TickerProviderStateMixin {
   File? _imageFile;
   String? _imageFileName;
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
+  Image? _heatmapImage;
   String? _diseaseName;
   String? _confidenceScore;
   String? _explanation;
@@ -88,20 +95,22 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> with TickerProvid
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
-    // Simulate AI model processing
-    await Future.delayed(const Duration(seconds: 3));
-
-    setState(() {
-      _isLoading = false;
-      _diseaseName = "Bacterialblight";
-      _confidenceScore = "100.0%";
-      _explanation = "Bacterial blight is a serious disease in rice crops caused by the bacterium Xanthomonas oryzae pv. oryzae. It typically starts with yellowing and wilting of the leaf tips, which gradually spread down the leaf blade, leading to drying and reduced photosynthesis. The disease spreads rapidly under warm, humid conditions, especially through rain splash, irrigation water, and infected seeds. It can severely reduce crop yield if not treated early. ";
-      _recommendedAction = "The recommended action includes using disease-resistant rice varieties, practicing proper field sanitation, and avoiding excessive nitrogen fertilizers. Additionally, seed treatment with approved bactericides and spraying copper-based fungicides or antibiotics like streptomycin can help manage the infection. Proper water management and removing infected plants early can also limit the spread of the disease.";
-    });
+    try {
+      final (detection, heatmap) = await TFLiteService.processImage(_imageFile!);
+      
+      ref.read(detectionProvider.notifier).setDetection(detection);
+      
+      setState(() {
+        _heatmapImage = heatmap;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ref.read(detectionProvider.notifier).reset(); // Reset detection if error occurs
+      _showSnackBar("Error processing image: $e", Icons.error, Colors.red);
+    }
   }
 
   void _showSnackBar(String message, IconData icon, Color color) {
@@ -119,6 +128,28 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> with TickerProvid
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+
+  String getExplanationForDisease(String disease) {
+    // Create a map of disease explanations
+    final explanations = {
+      'Bacterial Blight': 'Bacterial blight is characterized by...',
+      'Brown Spot': 'Brown spot disease appears as...',
+      // Add more diseases and explanations
+    };
+    
+    return explanations[disease] ?? 'No explanation available for this disease.';
+  }
+
+  String getTreatmentForDisease(String disease) {
+    // Create a map of disease treatments
+    final treatments = {
+      'Bacterial Blight': 'Use disease-resistant varieties...',
+      'Brown Spot': 'Apply fungicides and maintain proper...',
+      // Add more diseases and treatments
+    };
+    
+    return treatments[disease] ?? 'No treatment recommendation available.';
   }
 
   @override
@@ -394,215 +425,11 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> with TickerProvid
             const SizedBox(height: 30),
             
             // Results Section
-            if (_diseaseName != null)
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Icon(
-                            Icons.local_hospital,
-                            color: Colors.red.shade600,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Disease Detected',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                _diseaseName!,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.red,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _confidenceScore!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.green.shade700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    const SizedBox(height: 20),
-                    
-                    // Explanation Section
-                    Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.shade100),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.psychology, color: Colors.blue.shade600, size: 20),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'AI Explanation',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _explanation!,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.blue.shade800,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 15),
-                    
-                    // Recommendation Section
-                    Container(
-                      padding: const EdgeInsets.all(15),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green.shade100),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.medical_services, color: Colors.green.shade600, size: 20),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Recommended Treatment',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _recommendedAction!,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.green.shade800,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 20),
-                    
-                    // Action Buttons
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              // Save to history functionality
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.save, size: 18),
-                                SizedBox(width: 6),
-                                Text('Save to History'),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              // Learn more functionality
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.info, size: 18),
-                                SizedBox(width: 6),
-                                Text('Learn More'),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+            if (ref.watch(detectionProvider).value != null && _imageFile != null)
+              DetectionResultCard(
+                detection: ref.watch(detectionProvider).value!,
+                imageFile: _imageFile!,
+                heatmapImage: _heatmapImage,
               ),
           ],
         ),

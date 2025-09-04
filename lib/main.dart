@@ -5,10 +5,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/auth_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'providers/user_provider.dart';
+import 'services/tflite_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await TFLiteService.loadModel();
   runApp(const ProviderScope(child: MyApp()));
 }
 
